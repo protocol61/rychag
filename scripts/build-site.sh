@@ -14,5 +14,4 @@ cp node_modules/three/build/three.module.js node_modules/three/build/three.core.
 cp node_modules/three/examples/jsm/controls/OrbitControls.js \
   _site/node_modules/three/examples/jsm/controls/
 cp node_modules/three/LICENSE _site/node_modules/three/
-touch _site/.nojekyll
 echo "Сайт собран в _site/ ($(du -sh _site | cut -f1))"
