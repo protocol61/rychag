@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Рычаг 3D — техника под ваши пропорции</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Golos+Text:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/3d.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./node_modules/three/build/three.module.js",
+          "three/addons/": "./node_modules/three/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body class="page3d">
+    <header class="top">
+      <div class="brand">
+        <h1>Рычаг <span class="badge">3D</span></h1>
+        <p>Как выглядит выгодная техника при ваших пропорциях</p>
+      </div>
+      <nav class="lifts" role="tablist" aria-label="Упражнение">
+        <button role="tab" data-lift="squat" aria-selected="true">Присед</button>
+        <button role="tab" data-lift="bench" aria-selected="false">Жим</button>
+        <button role="tab" data-lift="deadlift" aria-selected="false">Тяга</button>
+      </nav>
+      <a class="share" id="to2d" href="index.html">Параметры и 2D</a>
+    </header>
+
+    <main class="layout3d">
+      <section class="viewport" aria-label="3D-модель">
+        <canvas id="view3d" aria-label="3D-модель упражнения. Тяните мышью, чтобы повернуть"></canvas>
+        <div class="views" role="group" aria-label="Ракурс">
+          <button type="button" data-view="side">Сбоку</button>
+          <button type="button" data-view="front">Спереди</button>
+          <button type="button" data-view="threeQuarter">Три четверти</button>
+        </div>
+        <p class="hint3d">Тяните мышью — поворот, колесо — масштаб</p>
+        <p class="fallback" id="noWebgl" hidden>
+          Браузер не смог запустить WebGL. Откройте
+          <a href="index.html">2D-версию</a> — там те же расчёты.
+        </p>
+      </section>
+
+      <aside class="panel side3d" aria-label="Настройки и результаты">
+        <div id="options3d"></div>
+        <div class="transport transport3d">
+          <button type="button" id="play3d">Пауза</button>
+          <input type="range" id="scrub3d" min="0" max="1000" value="0" aria-label="Положение в повторе" />
+        </div>
+        <label class="toggle"><input type="checkbox" id="path3d" checked /> Траектория грифа</label>
+        <h2>Сейчас</h2>
+        <dl class="stats" id="live3d"></dl>
+        <h2>Итог модели</h2>
+        <dl class="stats" id="summary3d"></dl>
+        <div id="warn3d"></div>
+        <p class="note3d">
+          Рост, вес, замеры и подвижность берутся из профиля
+          <a href="index.html">2D-страницы</a>.
+        </p>
+      </aside>
+    </main>
+
+    <script type="module" src="js/app3d.js"></script>
+  </body>
+</html>

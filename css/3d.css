@@ -1,0 +1,129 @@
+/* 3D-страница: сцена занимает почти весь экран, справа узкая панель */
+.badge {
+  display: inline-block;
+  vertical-align: top;
+  margin-left: 4px;
+  padding: 2px 6px;
+  font: 600 18px / 1 var(--display);
+  color: #fff;
+  background: var(--red);
+  border-radius: 3px;
+}
+
+a.share {
+  text-decoration: none;
+  color: inherit;
+}
+
+.layout3d {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  padding: 16px 28px 28px;
+  align-items: stretch;
+}
+
+.viewport {
+  position: relative;
+  background: #fff;
+  min-height: 560px;
+  border-radius: 4px 0 0 4px;
+  overflow: hidden;
+}
+
+#view3d {
+  display: block;
+  width: 100%;
+  height: calc(100vh - 150px);
+  min-height: 560px;
+  cursor: grab;
+  touch-action: none;
+}
+
+#view3d:active {
+  cursor: grabbing;
+}
+
+.views {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.views button {
+  border: 0;
+  background: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.views button + button {
+  border-left: 1px solid var(--ink);
+}
+
+.views button:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.hint3d {
+  position: absolute;
+  bottom: 10px;
+  left: 14px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.fallback {
+  position: absolute;
+  inset: 40% 10% auto;
+  text-align: center;
+  font-size: 16px;
+}
+
+.side3d {
+  border-radius: 0 4px 4px 0;
+  padding-top: 16px;
+}
+
+.side3d h2 {
+  margin: 18px 0 8px;
+  font: 600 22px / 1.1 var(--display);
+}
+
+.transport3d {
+  padding: 10px 0;
+  border-bottom: 0;
+}
+
+.note3d {
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .layout3d {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px 0 0;
+  }
+  #view3d {
+    height: 62vh;
+    min-height: 360px;
+  }
+  .viewport,
+  .side3d {
+    border-radius: 0;
+  }
+}
+
+#scrub3d {
+  flex: 1;
+  accent-color: var(--red);
+}

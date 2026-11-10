@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Рычаг — техника под ваши пропорции</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Golos+Text:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <h1>Рычаг</h1>
+        <p>Как выглядит выгодная техника при ваших пропорциях</p>
+      </div>
+      <nav class="lifts" role="tablist" aria-label="Упражнение">
+        <button role="tab" data-lift="squat" aria-selected="true">Присед</button>
+        <button role="tab" data-lift="bench" aria-selected="false">Жим</button>
+        <button role="tab" data-lift="deadlift" aria-selected="false">Тяга</button>
+      </nav>
+      <div class="top-actions">
+        <a class="share" id="to3d" href="3d.html">Смотреть в 3D</a>
+        <button class="share" id="share" type="button">Скопировать ссылку</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="panel inputs" aria-label="Параметры">
+        <form id="form" autocomplete="off">
+          <fieldset>
+            <legend>Тело</legend>
+            <div class="seg" role="radiogroup" aria-label="Пол">
+              <label><input type="radio" name="sex" value="m" /> Мужчина</label>
+              <label><input type="radio" name="sex" value="f" /> Женщина</label>
+            </div>
+            <label class="field">
+              <span>Рост</span>
+              <input type="number" name="height" min="140" max="220" step="1" />
+              <em>см</em>
+            </label>
+            <label class="field">
+              <span>Вес</span>
+              <input type="number" name="weight" min="40" max="200" step="0.5" />
+              <em>кг</em>
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Замеры</legend>
+            <p class="hint">
+              Пустое поле — модель оценит длину по росту. Свои замеры дают
+              точнее результат.
+            </p>
+            <button type="button" class="guide-open" data-open-guide="body">
+              Как снять замеры
+            </button>
+            <div id="segments"></div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Подвижность</legend>
+            <button type="button" class="guide-open" data-open-guide="mobility">
+              Как проверить подвижность
+            </button>
+            <label class="field">
+              <span>Голеностоп
+                <small>колено вперёд от вертикали, пятка на полу</small></span>
+              <input type="number" name="mobility.ankle" min="10" max="50" step="1" />
+              <em>°</em>
+            </label>
+            <label class="field">
+              <span>Угол бедро — торс
+                <small>насколько глубоко складываетесь в тазу</small></span>
+              <input type="number" name="mobility.hip" min="90" max="160" step="1" />
+              <em>°</em>
+            </label>
+          </fieldset>
+
+          <fieldset data-for="squat">
+            <legend>Присед</legend>
+            <label class="field">
+              <span>Вес штанги</span>
+              <input type="number" name="squat.load" min="20" max="500" step="2.5" />
+              <em>кг</em>
+            </label>
+            <div class="seg" role="radiogroup" aria-label="Положение грифа">
+              <label><input type="radio" name="squat.barPosition" value="high" /> Высокий гриф</label>
+              <label><input type="radio" name="squat.barPosition" value="low" /> Низкий гриф</label>
+            </div>
+            <label class="field">
+              <span>Разворот стоп и колен</span>
+              <input type="number" name="squat.stance" min="0" max="60" step="1" />
+              <em>°</em>
+            </label>
+            <label class="field">
+              <span>Глубина ниже параллели</span>
+              <input type="number" name="squat.depth" min="0" max="25" step="1" />
+              <em>°</em>
+            </label>
+          </fieldset>
+
+          <fieldset data-for="bench">
+            <legend>Жим лёжа</legend>
+            <label class="field">
+              <span>Вес штанги</span>
+              <input type="number" name="bench.load" min="20" max="400" step="2.5" />
+              <em>кг</em>
+            </label>
+            <label class="field">
+              <span>Прогиб
+                <small>на сколько грудь выше, чем лёжа ровно</small></span>
+              <input type="number" name="bench.arch" min="0" max="20" step="0.5" />
+              <em>см</em>
+            </label>
+            <label class="field">
+              <span>Хват по указательным
+                <small>пусто — модель подберёт</small></span>
+              <input type="number" name="bench.grip" min="30" max="95" step="1" placeholder="авто" />
+              <em>см</em>
+            </label>
+            <label class="field">
+              <span>Разведение локтей
+                <small>угол плеча к торсу, 90° — в стороны</small></span>
+              <input type="number" name="bench.flare" min="15" max="85" step="1" />
+              <em>°</em>
+            </label>
+          </fieldset>
+
+          <fieldset data-for="deadlift">
+            <legend>Становая тяга</legend>
+            <label class="field">
+              <span>Вес штанги</span>
+              <input type="number" name="deadlift.load" min="20" max="500" step="2.5" />
+              <em>кг</em>
+            </label>
+            <div class="seg" role="radiogroup" aria-label="Стиль">
+              <label><input type="radio" name="deadlift.style" value="conventional" /> Классика</label>
+              <label><input type="radio" name="deadlift.style" value="sumo" /> Сумо</label>
+            </div>
+            <label class="field">
+              <span>Разворот в сумо</span>
+              <input type="number" name="deadlift.sumoStance" min="20" max="70" step="1" />
+              <em>°</em>
+            </label>
+          </fieldset>
+
+          <button type="button" class="reset" id="reset">Сбросить к средним</button>
+        </form>
+      </aside>
+
+      <section class="stage" aria-label="Анимация">
+        <canvas id="scene" aria-label="Модель упражнения, вид сбоку"></canvas>
+        <div class="transport">
+          <button type="button" id="play" aria-label="Пауза">Пауза</button>
+          <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Положение в повторе" />
+          <label class="toggle"><input type="checkbox" id="showArms" checked /> Плечи рычагов</label>
+        </div>
+        <div class="charts">
+          <figure>
+            <figcaption>Моменты в суставах, Н·м, по высоте грифа <span id="legendMoments" class="legend"></span></figcaption>
+            <canvas id="chartMoments"></canvas>
+          </figure>
+          <figure>
+            <figcaption>Углы, °, по высоте грифа <span id="legendAngles" class="legend"></span></figcaption>
+            <canvas id="chartAngles"></canvas>
+          </figure>
+        </div>
+      </section>
+
+      <aside class="panel results" aria-live="polite">
+        <div id="results"></div>
+        <details class="method">
+          <summary>Как это считается</summary>
+          <p>
+            Тело — цепочка жёстких звеньев в боковой проекции. Длины по росту
+            оцениваются по пропорциям Drillis & Contini, массы и центры масс
+            сегментов — по de Leva (1996).
+          </p>
+          <p>
+            На каждом кадре модель перебирает возможные позы и оставляет ту,
+            что выполняет ограничения (центр масс над серединой стопы,
+            подвижность, гриф не проходит сквозь голени, глубина и хват по
+            правилам IPF) и при этом меньше всего нагружает суставы
+            относительно их силы.
+          </p>
+          <p>
+            Это модель, а не тренер: она не знает о вашей истории травм,
+            строении суставов и силе отдельных мышц. Используйте её как
+            отправную точку для экспериментов в зале.
+          </p>
+        </details>
+      </aside>
+    </main>
+
+
+    <dialog id="guide" class="guide" aria-labelledby="guideTitle">
+      <form id="measureForm" method="dialog" autocomplete="off">
+        <header class="guide-head">
+          <h2 id="guideTitle">Как снять замеры</h2>
+          <button type="button" class="guide-close" data-close-guide aria-label="Закрыть">×</button>
+        </header>
+
+        <div class="guide-body">
+          <div class="guide-text">
+            <p class="guide-lead">
+              Займёт 15–20 минут. Понадобятся рулетка, малярный скотч или
+              карандаш, толстая книга вместо угольника и телефон. С помощником
+              получится точнее, но можно и одному. Мерьте босиком, в
+              облегающей одежде.
+            </p>
+
+            <section id="guide-body">
+              <h3>Найдите костные точки</h3>
+              <p>
+                Модель считает длины между центрами суставов, поэтому мерить
+                нужно по костям, а не по складкам одежды. Каждую точку
+                прощупайте и отметьте скотчем.
+              </p>
+              <dl class="landmarks">
+                <dt><i style="--c: var(--ink)"></i>Акромион</dt>
+                <dd>
+                  Проведите пальцами по ключице наружу, до края плеча. Там,
+                  где кость обрывается ступенькой, — акромион. Отметьте
+                  самую боковую точку.
+                </dd>
+                <dt><i style="--c: var(--red)"></i>Большой вертел</dt>
+                <dd>
+                  Костный бугор сбоку бедра, на ладонь ниже гребня таза.
+                  Положите ладонь сбоку и поворачивайте стопу носком внутрь
+                  и наружу: бугор, который ходит под рукой, и есть вертел.
+                  Отметьте его верхний край.
+                </dd>
+                <dt><i style="--c: var(--blue)"></i>Щель колена</dt>
+                <dd>
+                  Сбоку колена, между бедренной и большеберцовой костью.
+                  Согните колено градусов на 30 — под пальцами появится
+                  ямка. Отметьте её и выпрямите ногу.
+                </dd>
+                <dt><i style="--c: var(--yellow)"></i>Наружная лодыжка</dt>
+                <dd>Центр костной шишки сбоку голеностопа.</dd>
+                <dt><i style="--c: var(--muted)"></i>Локоть</dt>
+                <dd>
+                  Наружная косточка у локтевого сгиба. Если вращать ладонью,
+                  она поворачивается под пальцем.
+                </dd>
+                <dt><i style="--c: var(--muted)"></i>Запястье</dt>
+                <dd>
+                  Косточка на запястье со стороны большого пальца.
+                </dd>
+              </dl>
+
+              <h3>Высоты ног и торса</h3>
+              <ol class="steps">
+                <li>
+                  Встаньте боком к стене, стопы вместе, вес на обе ноги,
+                  смотрите прямо.
+                </li>
+                <li>
+                  Помощник прикладывает книгу корешком к стене так, чтобы её
+                  край касался отметки на теле, и ставит черту на стене по
+                  краю книги.
+                </li>
+                <li>
+                  Отойдите и измерьте рулеткой расстояние от пола до каждой
+                  черты. Повторите два раза. Если результаты разошлись больше
+                  чем на сантиметр, измерьте в третий раз и возьмите среднее.
+                </li>
+              </ol>
+              <div class="mfields">
+                <label class="field"><span>Акромион от пола</span>
+                  <input type="number" name="acromion" min="90" max="190" step="0.5" /><em>см</em></label>
+                <label class="field"><span>Вертел от пола</span>
+                  <input type="number" name="trochanter" min="50" max="130" step="0.5" /><em>см</em></label>
+                <label class="field"><span>Щель колена от пола</span>
+                  <input type="number" name="knee" min="25" max="75" step="0.5" /><em>см</em></label>
+                <label class="field"><span>Лодыжка от пола</span>
+                  <input type="number" name="malleolus" min="3" max="15" step="0.5" /><em>см</em></label>
+              </div>
+
+              <h3>Руки и стопа</h3>
+              <ol class="steps">
+                <li>
+                  Опустите руку вдоль тела, ладонь к бедру, плечо
+                  расслаблено. Измерьте от акромиона до отметки на локте —
+                  это плечо.
+                </li>
+                <li>
+                  Согните руку под прямым углом и измерьте от локтя до
+                  косточки на запястье — это предплечье.
+                </li>
+                <li>
+                  Встаньте пяткой к стене и измерьте до кончика самого
+                  длинного пальца — это стопа.
+                </li>
+              </ol>
+              <div class="mfields">
+                <label class="field"><span>Плечо</span>
+                  <input type="number" name="upperArm" min="20" max="50" step="0.5" /><em>см</em></label>
+                <label class="field"><span>Предплечье</span>
+                  <input type="number" name="forearm" min="15" max="40" step="0.5" /><em>см</em></label>
+                <label class="field"><span>Стопа</span>
+                  <input type="number" name="foot" min="18" max="35" step="0.5" /><em>см</em></label>
+              </div>
+            </section>
+
+            <section id="guide-mobility">
+              <h3>Подвижность голеностопа</h3>
+              <ol class="steps">
+                <li>
+                  Встаньте лицом к стене в выпад: передняя стопа в 10 см от
+                  стены, носок прямо.
+                </li>
+                <li>
+                  Тяните колено вперёд, не отрывая пятку. Если колено
+                  касается стены легко, отодвиньте стопу и повторите — нужен
+                  предел, при котором пятка ещё на полу.
+                </li>
+                <li>
+                  В этой позиции приложите телефон к передней поверхности
+                  голени, под коленом. Откройте уровень (на iPhone —
+                  «Рулетка», вкладка «Уровень») и посмотрите угол наклона от
+                  вертикали.
+                </li>
+              </ol>
+              <p class="note">
+                Если приложение показывает угол от горизонтали, впишите его
+                как есть — ниже можно переключить. Приседаете в штангетках —
+                проверьте прямо в них.
+              </p>
+              <div class="mfields">
+                <label class="field"><span>Угол на телефоне</span>
+                  <input type="number" name="ankleReading" min="0" max="90" step="1" /><em>°</em></label>
+                <div class="seg" role="radiogroup" aria-label="Как отсчитан угол">
+                  <label><input type="radio" name="ankleRef" value="vertical" checked /> От вертикали</label>
+                  <label><input type="radio" name="ankleRef" value="horizontal" /> От горизонтали</label>
+                </div>
+              </div>
+
+              <h3>Угол бедро — торс</h3>
+              <ol class="steps">
+                <li>
+                  Без веса присядьте как можно глубже с ровной спиной: таз не
+                  подкручивается, поясница не округляется. Руки вперёд.
+                </li>
+                <li>
+                  Помощник снимает вас строго сбоку, телефон на высоте таза,
+                  с 3 метров.
+                </li>
+                <li>
+                  На фото проведите линии от вертела к щели колена и от
+                  вертела к акромиону. Измерьте угол между ними любым
+                  приложением-транспортиром.
+                </li>
+              </ol>
+              <p class="note">
+                Обычно на фото получается 35–55°. Модели нужен угол
+                складывания, он равен 180° минус угол на фото — посчитаем
+                сами.
+              </p>
+              <div class="mfields">
+                <label class="field"><span>Угол на фото</span>
+                  <input type="number" name="hipPhoto" min="15" max="90" step="1" /><em>°</em></label>
+              </div>
+            </section>
+          </div>
+
+          <figure class="guide-figure">
+            <svg viewBox="0 0 262 430" role="img" aria-labelledby="figTitle">
+              <title id="figTitle">Схема точек замера: вид сбоку у стены</title>
+              <line x1="18" y1="10" x2="18" y2="402" class="wall" />
+              <line x1="10" y1="402" x2="232" y2="402" class="floor" />
+              <!-- силуэт -->
+              <g class="flesh">
+                <circle cx="88" cy="40" r="19" />
+                <line x1="90" y1="82" x2="92" y2="196" stroke-width="30" />
+                <line x1="92" y1="196" x2="95" y2="290" stroke-width="20" />
+                <line x1="95" y1="290" x2="92" y2="386" stroke-width="13" />
+                <line x1="90" y1="82" x2="96" y2="154" stroke-width="12" />
+                <line x1="96" y1="154" x2="98" y2="212" stroke-width="10" />
+                <line x1="80" y1="398" x2="122" y2="398" stroke-width="8" />
+              </g>
+              <g class="bone">
+                <polyline points="88,59 90,82 92,196 95,290 92,386" />
+                <polyline points="90,82 96,154 98,212" />
+                <polyline points="80,398 122,398 92,386 80,398" />
+              </g>
+              <!-- высоты от пола -->
+              <g class="dims">
+                <line x1="150" y1="82" x2="150" y2="402" />
+                <line x1="166" y1="196" x2="166" y2="402" />
+                <line x1="182" y1="290" x2="182" y2="402" />
+                <line x1="198" y1="386" x2="198" y2="402" />
+                <line x1="90" y1="82" x2="156" y2="82" class="lead" />
+                <line x1="92" y1="196" x2="172" y2="196" class="lead" />
+                <line x1="95" y1="290" x2="188" y2="290" class="lead" />
+                <line x1="92" y1="386" x2="204" y2="386" class="lead" />
+              </g>
+              <g class="marks">
+                <circle cx="90" cy="82" r="5" fill="#1b2430" />
+                <circle cx="92" cy="196" r="5" fill="#c42530" />
+                <circle cx="95" cy="290" r="5" fill="#1f4fb5" />
+                <circle cx="92" cy="386" r="5" fill="#d49a00" />
+                <circle cx="96" cy="154" r="4" fill="#5a6573" />
+                <circle cx="98" cy="212" r="4" fill="#5a6573" />
+              </g>
+              <g class="labels">
+                <text x="154" y="76">акромион</text>
+                <text x="170" y="190">вертел</text>
+                <text x="186" y="284">колено</text>
+                <text x="204" y="380">лодыжка</text>
+                <text x="104" y="158">локоть</text>
+                <text x="106" y="216">запястье</text>
+              </g>
+              <g class="segs">
+                <text x="40" y="142">торс</text>
+                <text x="40" y="246">бедро</text>
+                <text x="40" y="340">голень</text>
+              </g>
+            </svg>
+            <figcaption>
+              Торс, бедро и голень — разности соседних высот. Отметки на
+              стене ставьте по краю книги, приложенной корешком к стене.
+            </figcaption>
+          </figure>
+        </div>
+
+        <footer class="guide-foot">
+          <output id="measureSummary" class="msummary"></output>
+          <div class="guide-actions">
+            <button type="button" class="guide-clear" id="measureClear">Очистить</button>
+            <button type="button" class="guide-apply" id="measureApply">Подставить в профиль</button>
+          </div>
+        </footer>
+      </form>
+    </dialog>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
