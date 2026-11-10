@@ -438,6 +438,56 @@ function renderDeadlift(res, cmp) {
     ])}`
 }
 
+const PATH_NAMES = { optimal: 'Оптимально', vertical: 'Вертикально' }
+
+function benchPathSection(s) {
+  const cur = s.path
+  const o = s.otherPath
+  const opt = cur === 'optimal' ? s.pathMoments : o
+  const vert = cur === 'optimal' ? o : s.pathMoments
+  const gain = pct(opt.mean.shoulder, vert.mean.shoulder)
+  const flares = state.result.frames.map((f) => f.pose.flare)
+  const flareText =
+    cur === 'optimal'
+      ? ` Локти по ходу раскрываются с ${n0(flares[0])}° до ${n0(Math.max(...flares))}°.`
+      : ''
+  const verdict =
+    gain > 2
+      ? `По оптимальной траектории гриф уходит к голове на ${n0(opt.drift)} см и встаёт над плечом — средний момент в плече на ${gain}% ниже, чем при вертикальном жиме.${flareText}`
+      : 'Для вашей постановки вертикальный и оптимальный путь почти равноценны по нагрузке на плечо.'
+  const [a, b] = cur === 'optimal' ? [opt, vert] : [vert, opt]
+  const romCur = s.rom
+  const romOther = o.rom
+  return `
+    <h2>Траектория грифа</h2>
+    <p class="verdict">${verdict}</p>
+    ${compareTable(PATH_NAMES[cur], PATH_NAMES[o.path], [
+      ['Сдвиг к голове', a.drift, b.drift, (v) => `${n0(v)} см`],
+      [
+        'Плечо, в среднем',
+        a.mean.shoulder,
+        b.mean.shoulder,
+        (v) => `${n0(v)} Н·м`,
+        true,
+      ],
+      [
+        'Плечо, пик',
+        a.peak.shoulder,
+        b.peak.shoulder,
+        (v) => `${n0(v)} Н·м`,
+        true,
+      ],
+      [
+        'Локоть, в среднем',
+        a.mean.elbow,
+        b.mean.elbow,
+        (v) => `${n0(v)} Н·м`,
+        true,
+      ],
+      ['Путь грифа', romCur, romOther, (v) => `${n0(v)} см`, true],
+    ])}`
+}
+
 function renderBench(res) {
   const s = res.summary
   const arch = state.profile.bench.arch
@@ -463,6 +513,7 @@ function renderBench(res) {
       ${stat('Работа за подъём', n0(s.work), 'Дж')}
     </dl>
     ${warningsHtml(res)}
+    ${benchPathSection(s)}
     <h2>Что даёт прогиб</h2>
     <p class="verdict">${
       arch > 0
@@ -515,6 +566,11 @@ function seriesFor(res) {
           name: 'Локоть',
           color: COLORS.blue,
           values: F.map((f) => f.angles.elbow),
+        },
+        {
+          name: 'Разведение локтей',
+          color: COLORS.red,
+          values: F.map((f) => f.pose.flare),
         },
         {
           name: 'Предплечье с головы',

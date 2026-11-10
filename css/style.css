@@ -789,3 +789,8 @@ a.share {
   text-decoration: none;
   color: inherit;
 }
+
+.compare th + th,
+.compare td + td {
+  padding-left: 12px;
+}

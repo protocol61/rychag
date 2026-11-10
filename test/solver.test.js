@@ -150,3 +150,52 @@ describe('коллизии грифа с ногами в тяге', () => {
     for (const f of r.frames) assert.ok(f.violations.shin < 0.1)
   })
 })
+
+describe('траектория грифа в жиме', () => {
+  const opt = solveBench(body, { ...P.bench, grip: 70, path: 'optimal' })
+  const vert = solveBench(body, { ...P.bench, grip: 70, path: 'vertical' })
+
+  it('вертикальная: гриф всё время над точкой касания', () => {
+    const x0 = vert.frames[0].bar.x
+    for (const f of vert.frames) assert.equal(f.bar.x, x0)
+  })
+
+  it('оптимальная: от груди к плечу, только в сторону головы', () => {
+    assert.ok(opt.frames[0].bar.x < -5)
+    assert.equal(opt.frames.at(-1).bar.x, 0)
+    for (let i = 1; i < opt.frames.length; i++) {
+      assert.ok(opt.frames[i].bar.x >= opt.frames[i - 1].bar.x - 1e-9)
+    }
+  })
+
+  // Форма пути зависит от хвата: при широком гриф уходит к голове сразу
+  // (классическая J), при узком локти стоят под грифом и сдвиг идёт позже
+  const share = (grip) => {
+    const r = solveBench(body, { ...P.bench, grip, path: 'optimal' })
+    const x0 = r.frames[0].bar.x
+    return (r.frames[30].bar.x - x0) / -x0
+  }
+
+  it('широкий хват: J — больше половины сдвига в первой половине подъёма', () => {
+    assert.ok(share(78) > 0.5)
+  })
+
+  it('узкий хват уводит гриф к голове позже, чем широкий', () => {
+    assert.ok(share(62) < share(78))
+  })
+
+  it('локти только раскрываются и не дёргаются', () => {
+    const fl = opt.frames.map((f) => f.pose.flare)
+    assert.equal(fl[0], P.bench.flare)
+    for (let i = 1; i < fl.length; i++) {
+      assert.ok(fl[i] >= fl[i - 1] - 1e-9 && fl[i] - fl[i - 1] <= 1.5 + 1e-9)
+    }
+  })
+
+  it('оптимальная разгружает плечо по сравнению с вертикальной', () => {
+    const m = opt.summary.pathMoments.mean.shoulder
+    const v = opt.summary.otherPath.mean.shoulder
+    assert.ok(m < 0.95 * v)
+    assert.equal(opt.summary.otherPath.path, 'vertical')
+  })
+})

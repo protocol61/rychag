@@ -586,12 +586,30 @@ function benchPoint(body, geo, o, xBar, yBar, g) {
   }
 }
 
-function benchPath(body, opts, gripIndex) {
+// Путь грифа в жиме. mode:
+//   'optimal'  — касание груди внизу, локаут над плечевым суставом, а форму
+//                пути между ними находит динамическое программирование:
+//                минимум суммарной нагрузки за весь подъём;
+//   'vertical' — гриф идёт строго вертикально над точкой касания.
+const BENCH_DX = 0.5 // шаг сетки по горизонтали, см
+const BENCH_SMOOTH = 0.04 // штраф за рывки по горизонтали, на см²
+const FLARE_RATE = 1.5 // локти раскрываются не быстрее, градусов на кадр
+
+function benchPath(
+  body,
+  opts,
+  gripIndex,
+  mode = opts.path ?? 'optimal',
+  coarse = false,
+) {
   const o = { load: opts.load, arch: opts.arch, flare: opts.flare * D2R }
   const geo = benchGeometry(body, o)
   const g = gripIndex / 2 + 4 // от середины до центра кисти
   const reach = geo.Lu + geo.Lf
-  const yTop = geo.yS + sqrt(max(1, reach * reach - sq(g - geo.s))) - 0.5
+  const lateral = sq(g - geo.s)
+  // высота локаута, если гриф стоит на x: руки прямые
+  const yTopAt = (x) =>
+    geo.yS + sqrt(max(1, reach * reach - lateral - x * x)) - 0.5
   const yBottom = geo.yChest + BAR_R
 
   // Точка касания: от мечевидного отростка до сосковой линии
@@ -605,34 +623,94 @@ function benchPath(body, opts, gripIndex) {
     }
   }
 
-  // Подъём: на каждой высоте выбираем x грифа (монотонно к плечу)
   const N = 61
-  const frames = []
-  let xPrev = xTouch
-  for (let i = 0; i < N; i++) {
-    const t = i / (N - 1)
-    const yBar = yBottom + (yTop - yBottom) * t
-    let best = null
-    const xs = []
-    const xMin = max(xPrev, xTouch * (1 - t))
-    for (let x = xMin; x <= 0.001; x += 0.25) xs.push(x)
-    if (i === 0) xs.splice(1)
-    for (const x of xs) {
-      const p = benchPoint(body, geo, o, x, yBar, g)
-      const score = p.cost + 0.02 * sq(x - xMin)
-      if (!best || score < best.score) best = { ...p, score }
+  const yTop = mode === 'vertical' ? yTopAt(xTouch) : yTopAt(0)
+  const ys = Array.from(
+    { length: N },
+    (_, i) => yBottom + ((yTop - yBottom) * i) / (N - 1),
+  )
+
+  let xs
+  let flareSeq = ys.map(() => o.flare)
+  if (mode === 'vertical') {
+    xs = ys.map(() => xTouch)
+  } else {
+    // Сетка от точки касания до плеча (последний узел — ровно 0)
+    const dx = coarse ? BENCH_DX * 2 : BENCH_DX
+    const M = max(2, Math.ceil(-xTouch / dx) + 1)
+    const grid = Array.from({ length: M }, (_, k) =>
+      k === M - 1 ? 0 : xTouch * (1 - k / (M - 1)),
+    )
+    // Нагрузка в каждом узле; недостижимые руками точки — запрещены.
+    // Локти по ходу подъёма могут раскрываться: в узле берём лучшее
+    // разведение между заданным (внизу) и 85°.
+    const flares = []
+    for (let f = opts.flare; f <= 85; f += coarse ? 10 : 5) flares.push(f * D2R)
+    const flareAt = ys.map(() => new Array(M).fill(o.flare))
+    const cost = ys.map((y, i) =>
+      grid.map((x, k) => {
+        const dist = Math.hypot(x, y - geo.yS, g - geo.s)
+        if (dist > reach - 0.3) return Infinity
+        let best = Infinity
+        for (const fl of i === 0 ? [o.flare] : flares) {
+          const c = benchPoint(body, geo, { ...o, flare: fl }, x, y, g).cost
+          if (c < best) {
+            best = c
+            flareAt[i][k] = fl
+          }
+        }
+        return best
+      }),
+    )
+    // dp[i][k] — минимальная нагрузка, чтобы на высоте i быть в узле k.
+    // Гриф движется только к голове (k не убывает).
+    const dp = ys.map(() => new Array(M).fill(Infinity))
+    const from = ys.map(() => new Array(M).fill(0))
+    dp[0][0] = benchPoint(body, geo, o, xTouch, yBottom, g).cost
+    for (let i = 1; i < N; i++) {
+      for (let k = 0; k < M; k++) {
+        if (cost[i][k] === Infinity && i < N - 1) continue
+        let best = Infinity
+        let arg = 0
+        for (let j = 0; j <= k; j++) {
+          const v = dp[i - 1][j] + BENCH_SMOOTH * sq(grid[k] - grid[j])
+          if (v < best) {
+            best = v
+            arg = j
+          }
+        }
+        dp[i][k] = best + (Number.isFinite(cost[i][k]) ? cost[i][k] : 0)
+        from[i][k] = arg
+      }
     }
-    xPrev = best.B.x
-    frames.push({
-      t,
-      pose: best,
-      bar: best.B,
-      cost: best.cost,
-      util: best.util,
-      moments: best.moments,
-      angles: best.angles,
-    })
+    // локаут обязателен над плечом: восстанавливаем путь от последнего узла
+    const ks = new Array(N)
+    ks[N - 1] = M - 1
+    for (let i = N - 1; i > 0; i--) ks[i - 1] = from[i][ks[i]]
+    xs = ks.map((k) => grid[k])
+    flareSeq = ks.map((k, i) => flareAt[i][k])
+    // разведение локтей только раскрывается и не быстрее FLARE_RATE за кадр
+    for (let i = 1; i < N; i++) {
+      flareSeq[i] = min(
+        max(flareSeq[i], flareSeq[i - 1]),
+        flareSeq[i - 1] + FLARE_RATE * D2R,
+      )
+    }
   }
+
+  const frames = ys.map((y, i) => {
+    const p = benchPoint(body, geo, { ...o, flare: flareSeq[i] }, xs[i], y, g)
+    p.flare = flareSeq[i] * R2D
+    return {
+      t: i / (N - 1),
+      pose: p,
+      bar: p.B,
+      cost: p.cost,
+      util: p.util,
+      moments: p.moments,
+      angles: p.angles,
+    }
+  })
   return { frames, geo, g, yTop, yBottom, xTouch }
 }
 
@@ -643,8 +721,8 @@ export function solveBench(body, opts) {
   if (!gripIndex) {
     auto = true
     let bestPeak = Infinity
-    for (let gi = 40; gi <= IPF_GRIP_MAX; gi += 1) {
-      const { frames } = benchPath(body, opts, gi)
+    for (let gi = 40; gi <= IPF_GRIP_MAX; gi += 2) {
+      const { frames } = benchPath(body, opts, gi, undefined, true)
       const peakCost = max(...frames.map((f) => f.cost))
       if (peakCost < bestPeak) {
         bestPeak = peakCost
@@ -654,6 +732,14 @@ export function solveBench(body, opts) {
   }
   const res = benchPath(body, opts, gripIndex)
   const flat = benchPath(body, { ...opts, arch: 0 }, gripIndex)
+  // та же постановка, но другая траектория — для сравнения
+  const mode = opts.path ?? 'optimal'
+  const other = benchPath(
+    body,
+    opts,
+    gripIndex,
+    mode === 'vertical' ? 'optimal' : 'vertical',
+  )
   const { frames } = res
   const rom = hypot(
     frames.at(-1).bar.x - frames[0].bar.x,
@@ -695,8 +781,34 @@ export function solveBench(body, opts) {
       peakUtil: frames[peak].util,
       peakBarY: frames[peak].bar.y,
       peakMoments: maxMoments(frames),
+      path: mode,
+      pathMoments: {
+        peak: maxMoments(frames),
+        mean: meanMoments(frames),
+        drift: abs(frames.at(-1).bar.x - frames[0].bar.x),
+      },
+      otherPath: {
+        path: mode === 'vertical' ? 'optimal' : 'vertical',
+        peak: maxMoments(other.frames),
+        mean: meanMoments(other.frames),
+        rom: hypot(
+          other.frames.at(-1).bar.x - other.frames[0].bar.x,
+          other.frames.at(-1).bar.y - other.frames[0].bar.y,
+        ),
+        drift: abs(other.frames.at(-1).bar.x - other.frames[0].bar.x),
+      },
     },
   }
+}
+
+function meanMoments(frames) {
+  const out = {}
+  for (const f of frames) {
+    for (const [k, v] of Object.entries(f.moments)) {
+      out[k] = (out[k] ?? 0) + v / frames.length
+    }
+  }
+  return out
 }
 
 export const CONSTANTS = { PLATE_R, BAR_R, BENCH_TOP, IPF_GRIP_MAX }

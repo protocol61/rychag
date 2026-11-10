@@ -56,7 +56,15 @@ const OPTIONS = {
       ],
     ],
   ],
-  bench: [],
+  bench: [
+    [
+      'path',
+      [
+        ['optimal', 'Оптимально'],
+        ['vertical', 'Вертикально'],
+      ],
+    ],
+  ],
 }
 
 function renderOptions() {

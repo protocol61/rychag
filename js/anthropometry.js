@@ -74,7 +74,7 @@ export const DEFAULT_PROFILE = {
   },
   mobility: { ankle: 35, hip: 135 },
   squat: { load: 140, barPosition: 'low', stance: 30, depth: 3 },
-  bench: { load: 100, arch: 5, grip: null, flare: 50 },
+  bench: { load: 100, arch: 5, grip: null, flare: 50, path: 'optimal' },
   deadlift: { load: 180, style: 'conventional', sumoStance: 45 },
 }
 

@@ -125,10 +125,14 @@
             </label>
             <label class="field">
               <span>Разведение локтей
-                <small>угол плеча к торсу, 90° — в стороны</small></span>
+                <small>внизу, у груди; 90° — в стороны</small></span>
               <input type="number" name="bench.flare" min="15" max="85" step="1" />
               <em>°</em>
             </label>
+            <div class="seg" role="radiogroup" aria-label="Траектория грифа">
+              <label><input type="radio" name="bench.path" value="optimal" /> Оптимально</label>
+              <label><input type="radio" name="bench.path" value="vertical" /> Вертикально</label>
+            </div>
           </fieldset>
 
           <fieldset data-for="deadlift">
