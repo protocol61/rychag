@@ -1,3 +1,4 @@
+import { GROUPS, groupLoad } from './anatomy.js'
 import { buildBody, DEFAULT_PROFILE } from './anthropometry.js'
 import { LiftScene } from './scene3d.js'
 import { solveBench, solveDeadlift, solveSquat } from './solver.js'
@@ -24,6 +25,8 @@ const state = {
     ? params.get('lift')
     : 'squat',
   res: null,
+  // по умолчанию — кости и мышцы; манекен — по кнопке или #look=mannequin
+  look: params.get('look') === 'mannequin' ? 'mannequin' : 'anatomy',
 }
 
 const canvas = document.getElementById('view3d')
@@ -151,6 +154,29 @@ function renderSummary() {
     .join('')
 }
 
+function setLook(look) {
+  state.look = look === 'mannequin' ? 'mannequin' : 'anatomy'
+  for (const r of document.querySelectorAll('#look3d input'))
+    r.checked = r.value === state.look
+  document.getElementById('anatomy3d').hidden = state.look !== 'anatomy'
+  scene?.setLook(state.look)
+  lastIdx = -1
+}
+document.getElementById('look3d').addEventListener('change', (e) => {
+  setLook(e.target.value)
+})
+
+// Нагрузка мышечных групп в кадре, по убыванию
+function renderMuscles(frame) {
+  const rows = Object.keys(GROUPS)
+    .map((g) => [GROUPS[g].name, groupLoad(g, frame.util)])
+    .filter(([, v]) => v !== null)
+    .sort((a, b) => b[1] - a[1])
+  document.getElementById('muscles3d').innerHTML = rows
+    .map(([name, v]) => stat(name, n0(v * 100), '%'))
+    .join('')
+}
+
 const live = document.getElementById('live3d')
 const scrub = document.getElementById('scrub3d')
 let lastIdx = -1
@@ -163,6 +189,7 @@ function onFrame(phase) {
   if (idx === lastIdx) return
   lastIdx = idx
   const f = state.res.frames[idx]
+  if (state.look === 'anatomy') renderMuscles(f)
   if (state.lift === 'bench') {
     live.innerHTML =
       stat('Высота грифа', n0(f.bar.y), 'см') +
@@ -211,7 +238,11 @@ function selectLift(lift) {
   for (const t of tabs)
     t.setAttribute('aria-selected', String(t.dataset.lift === lift))
   document.getElementById('to2d').href = `index.html#lift=${lift}`
-  history.replaceState(null, '', `#lift=${lift}`)
+  history.replaceState(
+    null,
+    '',
+    `#lift=${lift}${state.look === 'mannequin' ? '&look=mannequin' : ''}`,
+  )
   renderOptions()
   recompute()
 }
@@ -221,6 +252,7 @@ for (const t of tabs)
 if (window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   setPlaying(false)
 
+setLook(state.look)
 selectLift(state.lift)
 
 // #t=0.5&view=side — открыть на паузе в фазе и ракурсе (для ссылок и скриншотов)
@@ -229,4 +261,12 @@ if (Number.isFinite(t0) && t0 > 0) {
   setPlaying(false)
   scene?.scrub(t0)
 }
-if (params.get('view')) scene?.setView(params.get('view'))
+// #close=2 — крупный план, #aim=0.3 — сдвинуть цель по высоте, м
+if (params.get('view')) {
+  scene?.setView(params.get('view'), Number(params.get('close')) || 1)
+  const aim = Number(params.get('aim'))
+  if (scene && aim) {
+    scene.controls.target.y += aim
+    scene.camera.position.y += aim
+  }
+}

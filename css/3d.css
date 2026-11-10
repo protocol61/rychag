@@ -127,3 +127,26 @@ a.share {
   flex: 1;
   accent-color: var(--red);
 }
+
+.look3d {
+  margin-bottom: 10px;
+}
+
+.legend3d {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend3d i {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e3c0b6, #b3121f);
+}
+
+.muscles3d dd small {
+  margin-left: 2px;
+}

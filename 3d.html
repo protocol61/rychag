@@ -51,6 +51,10 @@
       </section>
 
       <aside class="panel side3d" aria-label="Настройки и результаты">
+        <div class="seg look3d" role="radiogroup" aria-label="Вид модели" id="look3d">
+          <label><input type="radio" name="look" value="mannequin" /> Манекен</label>
+          <label><input type="radio" name="look" value="anatomy" checked /> Кости и мышцы</label>
+        </div>
         <div id="options3d"></div>
         <div class="transport transport3d">
           <button type="button" id="play3d">Пауза</button>
@@ -59,6 +63,18 @@
         <label class="toggle"><input type="checkbox" id="path3d" checked /> Траектория грифа</label>
         <h2>Сейчас</h2>
         <dl class="stats" id="live3d"></dl>
+        <div id="anatomy3d">
+          <h2>Мышцы сейчас</h2>
+          <div class="legend3d" aria-hidden="true">
+            <span>0</span><i></i><span>150%+</span>
+          </div>
+          <dl class="stats muscles3d" id="muscles3d"></dl>
+          <p class="note3d">
+            Нагрузка — момент в суставе, который мышца разгибает, в долях от
+            силовых возможностей сустава. Серые мышцы в этом движении не
+            считаются. Линии мышц — упрощённые линии действия, как в OpenSim.
+          </p>
+        </div>
         <h2>Итог модели</h2>
         <dl class="stats" id="summary3d"></dl>
         <div id="warn3d"></div>

@@ -3,6 +3,7 @@
 // и проигрываются AnimationMixer'ом в режиме LoopPingPong.
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { buildAnatomy } from './anatomy3d.js'
 import { CONSTANTS } from './solver.js'
 import { MARKERS, rigFrame, SEGMENTS, widths } from './rig3d.js'
 
@@ -83,6 +84,7 @@ export class LiftScene {
     this.action = null
     this.playing = true
     this.onFrame = null
+    this.look = 'anatomy' // или 'mannequin'
 
     this.timer = new THREE.Timer()
     this.timer.connect(document)
@@ -163,19 +165,38 @@ export class LiftScene {
     this.mixer.update(0) // применить позу без продвижения времени
   }
 
-  setView(name) {
+  // close — во сколько раз ближе (для крупных планов по ссылке)
+  setView(name, close = 1) {
     const v = VIEWS[name]
     if (!v || !this.target) return
     const dir = new THREE.Vector3(...v.dir).normalize()
     this.camera.position
       .copy(this.target)
-      .addScaledVector(dir, v.dist * this.zoom)
+      .addScaledVector(dir, (v.dist * this.zoom) / close)
     this.controls.target.copy(this.target)
     this.controls.update()
   }
 
   setBarPath(visible) {
     if (this.barPath) this.barPath.visible = visible
+  }
+
+  // Манекен или анатомия: в анатомии кожа становится полупрозрачной
+  // оболочкой, а цветные шарниры прячутся — их место занимают мышцы.
+  setLook(look) {
+    this.look = look
+    if (!this.root) return
+    const anatomy = look === 'anatomy'
+    this.anatomy.visible = anatomy
+    this.markers.visible = !anatomy
+    const m = this.flesh
+    m.transparent = anatomy
+    m.opacity = anatomy ? 0.13 : 1
+    m.depthWrite = !anatomy
+    m.needsUpdate = true
+    // блины почти прозрачные, чтобы сбоку было видно мышцы
+    this.plateMat.opacity = anatomy ? 0.16 : 0.55
+    for (const mesh of this.mannequin.children) mesh.castShadow = !anatomy
   }
 
   // Построить манекен под тело и упражнение и запечь анимацию
@@ -201,6 +222,15 @@ export class LiftScene {
     const mat = (color, rough = 0.75) =>
       new THREE.MeshStandardMaterial({ color, roughness: rough })
     const flesh = mat(COLORS.flesh, 0.85)
+    this.flesh = flesh
+    const mannequin = new THREE.Group()
+    mannequin.name = 'mannequin'
+    this.mannequin = mannequin
+    root.add(mannequin)
+    const markerGroup = new THREE.Group()
+    markerGroup.name = 'markers'
+    this.markers = markerGroup
+    root.add(markerGroup)
 
     // сегменты
     const first = rigs[0].joints
@@ -214,7 +244,7 @@ export class LiftScene {
       mesh.name = `seg_${name}`
       mesh.scale.set(depth, 1, width)
       mesh.castShadow = true
-      root.add(mesh)
+      mannequin.add(mesh)
     }
     const head = new THREE.Mesh(
       new THREE.SphereGeometry(body.height * 0.058, 24, 16),
@@ -223,7 +253,7 @@ export class LiftScene {
     head.name = 'seg_head'
     head.scale.set(0.95, 1.08, 0.85)
     head.castShadow = true
-    root.add(head)
+    mannequin.add(head)
 
     // цветные шарниры
     const markers = res.lift === 'bench' ? MARKERS.bench : MARKERS.standing
@@ -245,7 +275,7 @@ export class LiftScene {
         )
         m.renderOrder = 10
         m.name = `j_${n}`
-        root.add(m)
+        markerGroup.add(m)
       }
     }
 
@@ -329,6 +359,17 @@ export class LiftScene {
       ),
     )
 
+    // анатомия: кости по системам сегментов, мышцы между прикреплениями
+    const anatomy = buildAnatomy(
+      body,
+      res.lift,
+      rigs,
+      order.map((i) => res.frames[i].util),
+    )
+    this.anatomy = anatomy.group
+    root.add(anatomy.group)
+    tracks.push(...anatomy.tracks(DURATION))
+
     const clip = new THREE.AnimationClip(res.lift, DURATION, tracks)
     this.mixer = new THREE.AnimationMixer(root)
     this.action = this.mixer.clipAction(clip)
@@ -353,6 +394,7 @@ export class LiftScene {
       this.camera.position.copy(this.target).add(offset)
     }
     this.widths = W
+    this.setLook(this.look)
   }
 
   #barbell(load, lift) {
@@ -379,6 +421,7 @@ export class LiftScene {
       opacity: 0.55,
       depthWrite: false,
     })
+    this.plateMat = plateMat
     for (const sg of [-1, 1]) {
       const sleeve = new THREE.Mesh(
         new THREE.CylinderGeometry(2.5, 2.5, 44, 16),
