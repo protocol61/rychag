@@ -1,5 +1,5 @@
 import { GROUPS, groupLoad } from './anatomy.js'
-import { buildBody, DEFAULT_PROFILE } from './anthropometry.js'
+import { buildBody, DEFAULT_PROFILE, estimateSegment } from './anthropometry.js'
 import { LiftScene } from './scene3d.js'
 import { solveBench, solveDeadlift, solveSquat } from './solver.js'
 
@@ -70,6 +70,60 @@ const OPTIONS = {
   ],
 }
 
+// Рычаги: какие длины влияют на движение. Ползунок — ±20 % от оценки
+// по росту; пустое значение в профиле означает «по пропорциям роста».
+const LEVERS = {
+  squat: ['thigh', 'shin', 'torso'],
+  deadlift: ['thigh', 'shin', 'torso', 'upperArm', 'forearm'],
+  bench: ['upperArm', 'forearm', 'torso'],
+}
+const LEVER_NAMES = {
+  thigh: 'Бедро',
+  shin: 'Голень',
+  torso: 'Торс',
+  upperArm: 'Плечо',
+  forearm: 'Предплечье',
+}
+
+// Постановка: [ключ, подпись, мин, макс, шаг, единица, когда показывать]
+const SETUP = {
+  squat: [
+    ['stance', 'Разворот стоп и колен', 0, 60, 1, '°'],
+    ['depth', 'Глубина ниже параллели', 0, 25, 1, '°'],
+  ],
+  bench: [
+    ['grip', 'Хват по указательным', 40, 81, 1, 'см'],
+    ['arch', 'Прогиб', 0, 20, 0.5, 'см'],
+    ['flare', 'Разведение локтей', 15, 85, 1, '°'],
+  ],
+  deadlift: [
+    [
+      'sumoStance',
+      'Разворот в сумо',
+      20,
+      70,
+      1,
+      '°',
+      (o) => o.style === 'sumo',
+    ],
+  ],
+}
+
+const fmt1 = (v) => (Math.round(v * 2) / 2).toLocaleString('ru-RU')
+
+function slider(name, label, min, max, step, value, unit, note = '') {
+  return `<label class="slider3d">
+      <span>${label}${note}</span>
+      <output data-for="${name}">${fmt1(value)}<small>${unit}</small></output>
+      <input type="range" name="${name}" min="${min}" max="${max}" step="${step}" value="${value}" />
+    </label>`
+}
+
+function leverRange(key) {
+  const est = estimateSegment(state.profile.height, key)
+  return [Math.round(est * 0.8), Math.round(est * 1.2), est]
+}
+
 function renderOptions() {
   const box = document.getElementById('options3d')
   const opts = state.profile[state.lift]
@@ -86,24 +140,94 @@ function renderOptions() {
           .join('')}</div>`,
     )
     .join('')
+
+  const own = state.profile.segments
+  const levers = LEVERS[state.lift]
+    .map((key) => {
+      const [min, max, est] = leverRange(key)
+      const v = own[key] ?? est
+      const note = own[key] ? '' : ' <small>по росту</small>'
+      return slider(
+        `seg.${key}`,
+        LEVER_NAMES[key],
+        min,
+        max,
+        0.5,
+        v,
+        'см',
+        note,
+      )
+    })
+    .join('')
+
+  const setup = SETUP[state.lift]
+    .filter(([, , , , , , when]) => !when || when(opts))
+    .map(([key, label, min, max, step, unit]) => {
+      if (key === 'grip') {
+        const auto = opts.grip == null
+        const v = opts.grip ?? state.res?.summary.grip ?? 70
+        return `${slider('opt.grip', label, min, max, step, Math.round(v), unit)}
+          <label class="toggle"><input type="checkbox" name="gripAuto" ${
+            auto ? 'checked' : ''
+          } /> Подбирать хват автоматически</label>`
+      }
+      return slider(`opt.${key}`, label, min, max, step, opts[key], unit)
+    })
+    .join('')
+
   box.innerHTML = `${groups}
     <label class="field"><span>Вес штанги</span>
-      <input type="number" name="load" min="20" max="500" step="2.5" value="${opts.load}" /><em>кг</em></label>`
+      <input type="number" name="load" min="20" max="500" step="2.5" value="${opts.load}" /><em>кг</em></label>
+    <h3 class="sub3d">Рычаги</h3>
+    ${levers}
+    <button type="button" class="link3d" id="resetLevers">Вернуть пропорции по росту</button>
+    ${setup ? `<h3 class="sub3d">Постановка</h3>${setup}` : ''}`
 }
 
-document.getElementById('options3d').addEventListener('input', (e) => {
+function schedule() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.profile))
+  clearTimeout(recompute.t)
+  recompute.t = setTimeout(recompute, 120)
+}
+
+const optionsBox = document.getElementById('options3d')
+optionsBox.addEventListener('input', (e) => {
   const el = e.target
   const opts = state.profile[state.lift]
-  if (el.name === 'load') {
+  if (el.type === 'range') {
+    const v = Number(el.value)
+    const out = optionsBox.querySelector(`output[data-for="${el.name}"]`)
+    if (out) out.firstChild.textContent = fmt1(v)
+    const [kind, key] = el.name.split('.')
+    if (kind === 'seg') {
+      state.profile.segments[key] = v
+      const note = el.closest('label').querySelector('span small')
+      if (note) note.remove()
+    } else {
+      opts[key] = v
+      if (key === 'grip')
+        optionsBox.querySelector('[name=gripAuto]').checked = false
+    }
+  } else if (el.name === 'gripAuto') {
+    opts.grip = el.checked
+      ? null
+      : Number(optionsBox.querySelector('[name="opt.grip"]').value)
+  } else if (el.name === 'load') {
     const v = Number(el.value)
     if (!(v >= 20 && v <= 500)) return
     opts.load = v
   } else {
     opts[el.name] = el.value
+    // смена стиля тяги меняет набор ползунков
+    if (el.name === 'style') renderOptions()
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.profile))
-  clearTimeout(recompute.t)
-  recompute.t = setTimeout(recompute, 150)
+  schedule()
+})
+optionsBox.addEventListener('click', (e) => {
+  if (e.target.id !== 'resetLevers') return
+  for (const key of Object.keys(LEVER_NAMES)) state.profile.segments[key] = null
+  renderOptions()
+  schedule()
 })
 
 // ---------------------------------------------------------------------------
@@ -123,6 +247,7 @@ function recompute() {
   state.body = body
   state.res = solve[state.lift](body, opts)
   scene?.setResult(body, state.res, opts)
+  lastIdx = -1 // кадр тот же, но цифры новые
   renderSummary()
 }
 
@@ -149,6 +274,16 @@ function renderSummary() {
       stat('Пик момента в локте', n0(s.peakMoments.elbow), 'Н·м')
   }
   document.getElementById('summary3d').innerHTML = html
+  // автоподбор хвата: ползунок показывает выбранный моделью хват
+  if (state.lift === 'bench' && state.profile.bench.grip == null) {
+    const g = optionsBox.querySelector('[name="opt.grip"]')
+    if (g) {
+      g.value = String(Math.round(s.grip))
+      optionsBox.querySelector(
+        'output[data-for="opt.grip"]',
+      ).firstChild.textContent = fmt1(Math.round(s.grip))
+    }
+  }
   document.getElementById('warn3d').innerHTML = state.res.warnings
     .map((w) => `<p class="warn">${w}</p>`)
     .join('')
