@@ -146,7 +146,7 @@ describe('анатомия: 3D-треки', () => {
         res.frames.map((f) => f.util),
       )
       const tracks = a.tracks(1.6)
-      assert.ok(tracks.length > 100)
+      assert.ok(tracks.length >= 28)
       for (const t of tracks) {
         const { nodeName } = THREE.PropertyBinding.parseTrackName(t.name)
         assert.ok(
@@ -156,6 +156,31 @@ describe('анатомия: 3D-треки', () => {
         assert.ok(t.values.every(Number.isFinite), t.name)
         assert.equal(t.times.length, rigs.length)
       }
+    })
+  }
+
+  for (const lift of ['squat', 'deadlift', 'bench']) {
+    it(`${lift}: геометрия мышц конечна в любой фазе и следует за позой`, () => {
+      const { res, rigs } = prepare(lift)
+      const a = buildAnatomy(
+        body,
+        lift,
+        rigs,
+        res.frames.map((f) => f.util),
+      )
+      const mesh = a.group.getObjectByName('muscles')
+      const pos = mesh.geometry.attributes.position
+      const snap = []
+      for (const phase of [0, 0.37, 1]) {
+        a.update(phase)
+        assert.ok(pos.array.every(Number.isFinite), `фаза ${phase}`)
+        assert.ok(
+          mesh.geometry.attributes.normal.array.every(Number.isFinite),
+          `нормали, фаза ${phase}`,
+        )
+        snap.push(pos.array.slice())
+      }
+      assert.notDeepEqual(snap[0], snap[2])
     })
   }
 })

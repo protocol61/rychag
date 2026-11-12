@@ -191,14 +191,16 @@ export const GROUPS = {
 // P — надколенник, вычисляется по положению бедра и голени.
 //
 // tf — доли сухожилия на концах всего пути; flat — сплющенность широких
-// мышц (ягодичная, грудная, широчайшая); r — радиус брюшка, см.
+// мышц (ягодичная, грудная, широчайшая); r — полуширина брюшка, см
+// (подобрана по площадям сечений: Ward 2009, МРТ середины бедра);
+// bands — доли длины, где поперёк идут сухожильные перемычки.
 export const MUSCLES = [
   // --- таз и бедро
   {
     id: 'gluteusMaxSup',
     group: 'glutes',
-    r: 2.6,
-    flat: 0.45,
+    r: 3.2,
+    flat: 0.5,
     tf: [0.08, 0.15],
     path: [
       ['T', -9, 0.2, 7],
@@ -208,8 +210,8 @@ export const MUSCLES = [
   {
     id: 'gluteusMaxMid',
     group: 'glutes',
-    r: 3,
-    flat: 0.45,
+    r: 3.6,
+    flat: 0.5,
     tf: [0.06, 0.12],
     path: [
       ['T', -10.5, 0.1, 3],
@@ -219,8 +221,8 @@ export const MUSCLES = [
   {
     id: 'gluteusMaxInf',
     group: 'glutes',
-    r: 2.6,
-    flat: 0.45,
+    r: 3.2,
+    flat: 0.5,
     tf: [0.06, 0.12],
     path: [
       ['T', -9, -0.04, 1.2],
@@ -230,7 +232,7 @@ export const MUSCLES = [
   {
     id: 'gluteusMed',
     group: 'glutes',
-    r: 2.4,
+    r: 3,
     flat: 0.5,
     tf: [0.05, 0.2],
     path: [
@@ -239,8 +241,20 @@ export const MUSCLES = [
     ],
   },
   {
+    id: 'gluteusMedAnterior',
+    group: 'glutes',
+    r: 2.6,
+    flat: 0.5,
+    tf: [0.05, 0.2],
+    path: [
+      ['T', 3, 0.2, 13.5],
+      ['TH', 0.4, 0.05, 5.4],
+    ],
+  },
+  {
     id: 'tensorFasciaeLatae',
-    r: 1.4,
+    r: 1.6,
+    flat: 0.6,
     tf: [0.05, 0.7],
     path: [
       ['T', 4.5, 0.14, 11.5],
@@ -250,7 +264,8 @@ export const MUSCLES = [
   },
   {
     id: 'iliopsoas',
-    r: 2.2,
+    r: 2.4,
+    flat: 0.8,
     tf: [0.05, 0.12],
     path: [
       ['T', -3, 0.35, 3.5],
@@ -261,28 +276,32 @@ export const MUSCLES = [
   {
     id: 'rectusFemoris',
     group: 'quads',
-    r: 2.2,
+    r: 2.4,
+    flat: 0.75,
     tf: [0.12, 0.15],
     path: [['T', 4, 0.07, 9.5], ['P']],
   },
   {
     id: 'vastusLateralis',
     group: 'quads',
-    r: 3,
+    r: 3.8,
+    flat: 0.62,
     tf: [0.06, 0.12],
     path: [['TH', 0.3, 0.12, 4.8], ['P']],
   },
   {
     id: 'vastusMedialis',
     group: 'quads',
-    r: 2.7,
+    r: 3.1,
+    flat: 0.7,
     tf: [0.12, 0.04],
     path: [['TH', 0.5, 0.35, -1.2], ['P']],
   },
   {
     id: 'vastusIntermedius',
     group: 'quads',
-    r: 2.2,
+    r: 2.8,
+    flat: 0.6,
     tf: [0.05, 0.12],
     path: [['TH', 2.2, 0.2, 1.2], ['P']],
   },
@@ -296,7 +315,8 @@ export const MUSCLES = [
   {
     id: 'bicepsFemoris',
     group: 'hamstrings',
-    r: 2.2,
+    r: 2.6,
+    flat: 0.7,
     tf: [0.15, 0.2],
     path: [
       ['T', -4, -0.12, 5.5],
@@ -306,7 +326,8 @@ export const MUSCLES = [
   {
     id: 'semitendinosus',
     group: 'hamstrings',
-    r: 1.7,
+    r: 2,
+    flat: 0.75,
     tf: [0.1, 0.4],
     path: [
       ['T', -4.2, -0.13, 5],
@@ -316,7 +337,8 @@ export const MUSCLES = [
   {
     id: 'semimembranosus',
     group: 'hamstrings',
-    r: 2,
+    r: 2.4,
+    flat: 0.7,
     tf: [0.3, 0.1],
     path: [
       ['T', -3.8, -0.11, 5.8],
@@ -326,8 +348,8 @@ export const MUSCLES = [
   {
     id: 'adductorMagnus',
     group: 'adductors',
-    r: 3,
-    flat: 0.6,
+    r: 3.4,
+    flat: 0.55,
     tf: [0.05, 0.1],
     path: [
       ['T', -3, -0.12, 4],
@@ -337,7 +359,8 @@ export const MUSCLES = [
   {
     id: 'adductorMagnusDistal',
     group: 'adductors',
-    r: 2.6,
+    r: 2.8,
+    flat: 0.7,
     tf: [0.1, 0.25],
     path: [
       ['T', -3.5, -0.13, 4.8],
@@ -346,7 +369,8 @@ export const MUSCLES = [
   },
   {
     id: 'adductorLongus',
-    r: 1.8,
+    r: 2.2,
+    flat: 0.6,
     tf: [0.1, 0.1],
     path: [
       ['T', 4, -0.03, 3],
@@ -355,7 +379,8 @@ export const MUSCLES = [
   },
   {
     id: 'gracilis',
-    r: 1,
+    r: 1.2,
+    flat: 0.6,
     tf: [0.1, 0.3],
     path: [
       ['T', 3, -0.08, 2],
@@ -364,7 +389,8 @@ export const MUSCLES = [
   },
   {
     id: 'sartorius',
-    r: 1.2,
+    r: 1.4,
+    flat: 0.45,
     tf: [0.05, 0.1],
     path: [
       ['T', 4.5, 0.14, 11.5],
@@ -376,7 +402,8 @@ export const MUSCLES = [
   {
     id: 'gastrocnemiusMed',
     group: 'calves',
-    r: 2.6,
+    r: 3,
+    flat: 0.6,
     tf: [0.08, 0.5],
     path: [
       ['TH', -2.6, 0.92, -2.2],
@@ -386,7 +413,8 @@ export const MUSCLES = [
   {
     id: 'gastrocnemiusLat',
     group: 'calves',
-    r: 2.3,
+    r: 2.6,
+    flat: 0.6,
     tf: [0.08, 0.52],
     path: [
       ['TH', -2.6, 0.92, 2.2],
@@ -396,8 +424,8 @@ export const MUSCLES = [
   {
     id: 'soleus',
     group: 'calves',
-    r: 2.8,
-    flat: 0.7,
+    r: 3.4,
+    flat: 0.5,
     tf: [0.08, 0.35],
     path: [
       ['SH', -2.5, 0.2, 0.8],
@@ -407,7 +435,8 @@ export const MUSCLES = [
   {
     id: 'tibialisAnterior',
     group: 'tibialis',
-    r: 1.5,
+    r: 1.6,
+    flat: 0.8,
     tf: [0.05, 0.45],
     path: [
       ['SH', 2, 0.2, 1.8],
@@ -417,7 +446,8 @@ export const MUSCLES = [
   },
   {
     id: 'fibularisLongus',
-    r: 1.2,
+    r: 1.3,
+    flat: 0.8,
     tf: [0.05, 0.5],
     path: [
       ['SH', -1.2, 0.08, 3.4],
@@ -429,7 +459,8 @@ export const MUSCLES = [
   {
     id: 'erectorLumbar',
     group: 'erectors',
-    r: 2.6,
+    r: 2.8,
+    flat: 0.75,
     tf: [0.08, 0.12],
     path: [
       ['T', -9, 0.06, 3],
@@ -439,7 +470,8 @@ export const MUSCLES = [
   {
     id: 'erectorThoracic',
     group: 'erectors',
-    r: 1.6,
+    r: 1.8,
+    flat: 0.7,
     tf: [0.15, 0.2],
     path: [
       ['T', -11.5, 0.42, 4],
@@ -449,7 +481,8 @@ export const MUSCLES = [
   {
     id: 'iliocostalis',
     group: 'erectors',
-    r: 1.5,
+    r: 1.6,
+    flat: 0.6,
     tf: [0.1, 0.2],
     path: [
       ['T', -6, 0.2, 9],
@@ -458,8 +491,9 @@ export const MUSCLES = [
   },
   {
     id: 'rectusAbdominis',
-    r: 2.2,
-    flat: 0.35,
+    r: 2.8,
+    flat: 0.3,
+    bands: [0.32, 0.52, 0.72],
     tf: [0.04, 0.04],
     path: [
       ['T', 4.5, -0.04, 1.5],
@@ -469,8 +503,8 @@ export const MUSCLES = [
   },
   {
     id: 'obliqueExternal',
-    r: 2.5,
-    flat: 0.3,
+    r: 3.2,
+    flat: 0.25,
     tf: [0.04, 0.2],
     path: [
       ['T', 6, 0.62, 12.5],
@@ -479,8 +513,8 @@ export const MUSCLES = [
   },
   {
     id: 'obliqueLateral',
-    r: 2.2,
-    flat: 0.3,
+    r: 2.8,
+    flat: 0.28,
     tf: [0.04, 0.1],
     path: [
       ['T', 1, 0.55, 14],
@@ -489,8 +523,8 @@ export const MUSCLES = [
   },
   {
     id: 'latissimusUpper',
-    r: 2.2,
-    flat: 0.35,
+    r: 2.6,
+    flat: 0.3,
     tf: [0.05, 0.3],
     path: [
       ['T', -11, 0.68, 1.5],
@@ -500,8 +534,8 @@ export const MUSCLES = [
   },
   {
     id: 'latissimusMid',
-    r: 2.5,
-    flat: 0.35,
+    r: 3,
+    flat: 0.3,
     tf: [0.05, 0.3],
     path: [
       ['T', -10.5, 0.3, 2.5],
@@ -511,8 +545,8 @@ export const MUSCLES = [
   },
   {
     id: 'latissimusLat',
-    r: 2,
-    flat: 0.4,
+    r: 2.6,
+    flat: 0.32,
     tf: [0.05, 0.3],
     path: [
       ['T', -5, 0.22, 12],
@@ -520,9 +554,64 @@ export const MUSCLES = [
       ['U', 1.8, 0.14, -0.3],
     ],
   },
+  // лопатка: вращательная манжета, ромбовидные, передняя зубчатая
+  {
+    id: 'infraspinatus',
+    r: 2.6,
+    flat: 0.35,
+    tf: [0.04, 0.3],
+    path: [
+      ['Tsh', -9.8, -7, -7.5],
+      ['Tsh', -5.2, -1.5, -0.5],
+      ['U', -1.4, 0.02, 1.8],
+    ],
+  },
+  {
+    id: 'teresMajor',
+    r: 1.9,
+    flat: 0.6,
+    tf: [0.05, 0.3],
+    path: [
+      ['Tsh', -9.6, -12.5, -7.5],
+      ['Tsh', -4.5, -7.5, -0.5],
+      ['U', 1.3, 0.14, -0.6],
+    ],
+  },
+  {
+    id: 'rhomboid',
+    r: 2.4,
+    flat: 0.3,
+    tf: [0.1, 0.05],
+    path: [
+      ['T', -11.5, 0.86, 0.8],
+      ['Tsh', -10.2, -5, -9.6],
+    ],
+  },
+  {
+    id: 'serratusAnteriorUpper',
+    r: 2.2,
+    flat: 0.3,
+    tf: [0.1, 0.05],
+    path: [
+      ['T', 6, 0.74, 11.5],
+      ['T', 0.5, 0.76, 15],
+      ['Tsh', -8.5, -5, -8.6],
+    ],
+  },
+  {
+    id: 'serratusAnteriorLower',
+    r: 2.6,
+    flat: 0.3,
+    tf: [0.12, 0.05],
+    path: [
+      ['T', 7, 0.58, 12.5],
+      ['T', 1, 0.64, 16],
+      ['Tsh', -8.8, -11, -7.6],
+    ],
+  },
   {
     id: 'trapeziusUpper',
-    r: 1.8,
+    r: 2.2,
     flat: 0.4,
     tf: [0.1, 0.1],
     path: [
@@ -532,8 +621,8 @@ export const MUSCLES = [
   },
   {
     id: 'trapeziusMid',
-    r: 2,
-    flat: 0.3,
+    r: 2.6,
+    flat: 0.28,
     tf: [0.1, 0.1],
     path: [
       ['T', -10.5, 0.88, 1],
@@ -542,8 +631,8 @@ export const MUSCLES = [
   },
   {
     id: 'trapeziusLower',
-    r: 1.8,
-    flat: 0.3,
+    r: 2.4,
+    flat: 0.28,
     tf: [0.1, 0.1],
     path: [
       ['T', -11.5, 0.5, 1],
@@ -563,7 +652,7 @@ export const MUSCLES = [
   {
     id: 'pectoralisClavicular',
     group: 'pecs',
-    r: 2.2,
+    r: 2.6,
     flat: 0.35,
     tf: [0.03, 0.25],
     path: [
@@ -574,7 +663,7 @@ export const MUSCLES = [
   {
     id: 'pectoralisSternal',
     group: 'pecs',
-    r: 2.8,
+    r: 3.2,
     flat: 0.35,
     tf: [0.03, 0.25],
     path: [
@@ -585,7 +674,7 @@ export const MUSCLES = [
   {
     id: 'pectoralisAbdominal',
     group: 'pecs',
-    r: 2.4,
+    r: 2.8,
     flat: 0.35,
     tf: [0.03, 0.25],
     path: [
@@ -596,7 +685,8 @@ export const MUSCLES = [
   {
     id: 'deltoidAnterior',
     group: 'frontDelts',
-    r: 2.2,
+    r: 2.4,
+    flat: 0.6,
     tf: [0.05, 0.2],
     path: [
       ['Tsh', 3, 1.5, -3.5],
@@ -606,7 +696,8 @@ export const MUSCLES = [
   },
   {
     id: 'deltoidMiddle',
-    r: 2.4,
+    r: 2.7,
+    flat: 0.6,
     tf: [0.05, 0.2],
     path: [
       ['Tsh', 0.5, 2.8, 0.5],
@@ -616,7 +707,8 @@ export const MUSCLES = [
   },
   {
     id: 'deltoidPosterior',
-    r: 2,
+    r: 2.3,
+    flat: 0.6,
     tf: [0.05, 0.2],
     path: [
       ['Tsh', -5, 1.2, -4],
@@ -627,7 +719,8 @@ export const MUSCLES = [
   {
     id: 'tricepsLong',
     group: 'triceps',
-    r: 2.2,
+    r: 2.3,
+    flat: 0.75,
     tf: [0.05, 0.2],
     path: [
       ['Tsh', -1.5, -3, -0.5],
@@ -638,7 +731,8 @@ export const MUSCLES = [
   {
     id: 'tricepsLateral',
     group: 'triceps',
-    r: 2,
+    r: 2.1,
+    flat: 0.7,
     tf: [0.05, 0.25],
     path: [
       ['U', -1.2, 0.18, 1.4],
@@ -649,7 +743,8 @@ export const MUSCLES = [
   {
     id: 'tricepsMedial',
     group: 'triceps',
-    r: 1.6,
+    r: 1.7,
+    flat: 0.7,
     tf: [0.05, 0.15],
     path: [
       ['U', -1.6, 0.55, -0.8],
@@ -658,7 +753,8 @@ export const MUSCLES = [
   },
   {
     id: 'bicepsLong',
-    r: 2,
+    r: 1.9,
+    flat: 0.85,
     tf: [0.25, 0.15],
     path: [
       ['Tsh', 0.5, 0.5, 0.3],
@@ -668,7 +764,8 @@ export const MUSCLES = [
   },
   {
     id: 'bicepsShort',
-    r: 1.6,
+    r: 1.7,
+    flat: 0.85,
     tf: [0.15, 0.15],
     path: [
       ['Tsh', 2.5, -1, -2.5],
@@ -678,7 +775,8 @@ export const MUSCLES = [
   },
   {
     id: 'brachialis',
-    r: 2,
+    r: 2.1,
+    flat: 0.6,
     tf: [0.05, 0.15],
     path: [
       ['U', 1.4, 0.5, 0],
@@ -687,7 +785,8 @@ export const MUSCLES = [
   },
   {
     id: 'brachioradialis',
-    r: 1.4,
+    r: 1.5,
+    flat: 0.75,
     tf: [0.05, 0.45],
     path: [
       ['U', 0.6, 0.7, 2.4],
@@ -696,7 +795,8 @@ export const MUSCLES = [
   },
   {
     id: 'forearmFlexors',
-    r: 1.8,
+    r: 2,
+    flat: 0.7,
     tf: [0.05, 0.45],
     path: [
       ['U', 0, 0.98, -2.8],
@@ -705,7 +805,8 @@ export const MUSCLES = [
   },
   {
     id: 'forearmExtensors',
-    r: 1.6,
+    r: 1.8,
+    flat: 0.7,
     tf: [0.05, 0.45],
     path: [
       ['U', 0, 0.98, 2.4],

@@ -144,14 +144,17 @@ export class LiftScene {
     this.timer.update()
     const delta = this.timer.getDelta()
     if (this.mixer && this.playing) this.mixer.update(delta)
+    if (this.anatomy?.visible) this.updateMuscles(this.phase)
     this.controls.update()
     this.renderer.render(this.scene, this.camera)
     if (this.action && this.onFrame) this.onFrame(this.phase)
   }
 
-  // 0 — стартовая позиция, 1 — точка разворота
+  // 0 — стартовая позиция, 1 — точка разворота. Берётся из своего трека,
+  // а не из action.time: в LoopPingPong на обратном проходе three.js
+  // показывает позу для (DURATION − time), а time хранит непрямое значение.
   get phase() {
-    return this.action ? this.action.time / DURATION : 0
+    return this.clock?.phase ?? 0
   }
 
   setPlaying(on) {
@@ -161,6 +164,8 @@ export class LiftScene {
   scrub(phase) {
     if (!this.action) return
     this.playing = false
+    // сброс счётчика петель, иначе на обратном проходе поза отразится
+    this.action.reset()
     this.action.time = THREE.MathUtils.clamp(phase, 0, 1) * DURATION
     this.mixer.update(0) // применить позу без продвижения времени
   }
@@ -201,7 +206,7 @@ export class LiftScene {
 
   // Построить манекен под тело и упражнение и запечь анимацию
   setResult(body, res, opts) {
-    const keepTime = this.action?.time ?? 0
+    const keepTime = this.phase * DURATION
     if (this.root) {
       this.mixer.stopAllAction()
       this.mixer.uncacheRoot(this.root)
@@ -302,7 +307,19 @@ export class LiftScene {
     // запекание: один ключевой кадр на кадр решателя
     const n = rigs.length
     const times = rigs.map((_, i) => (i / (n - 1)) * DURATION)
-    const tracks = []
+    // часы фазы: тот же проигрыш, что у позы, включая обратный проход
+    const clock = new THREE.Object3D()
+    clock.name = 'phaseClock'
+    clock.phase = 0
+    root.add(clock)
+    this.clock = clock
+    const tracks = [
+      new THREE.NumberKeyframeTrack(
+        'phaseClock.phase',
+        times,
+        times.map((t) => t / DURATION),
+      ),
+    ]
     const q = new THREE.Quaternion()
     for (const [name, a, b] of SEGMENTS) {
       const pos = []
@@ -367,6 +384,7 @@ export class LiftScene {
       order.map((i) => res.frames[i].util),
     )
     this.anatomy = anatomy.group
+    this.updateMuscles = anatomy.update
     root.add(anatomy.group)
     tracks.push(...anatomy.tracks(DURATION))
 

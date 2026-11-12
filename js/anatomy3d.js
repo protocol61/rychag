@@ -445,7 +445,24 @@ function skull(D) {
     V(7.2 * k, -10.3 * k, 0),
   ]
   const jawR = tube(jaw, 0.9 * k)
-  parts.push(jawR, mirrored(jawR))
+  // скуловая дуга, скула и сосцевидный отросток
+  const cheek = merge([
+    tube(
+      [V(6.6 * k, -2.4 * k, 4.6 * k), V(3 * k, -2.6 * k, 6.1 * k), V(-0.5 * k, -2.8 * k, 6 * k)],
+      0.6 * k,
+    ),
+    ball(V(6.8 * k, -2.6 * k, 4.4 * k), 1.4 * k, 1, 0.9, 0.8),
+    ball(V(-1.4 * k, -5 * k, 5 * k), 1 * k, 0.9, 1.4, 0.8),
+  ])
+  parts.push(jawR, mirrored(jawR), cheek, mirrored(cheek))
+  // надбровье и ряды зубов
+  const arc = (y, x0, depth, w) =>
+    [-1, -0.5, 0, 0.5, 1].map((t) =>
+      V((x0 - depth * t * t) * k, y * k, t * w * k),
+    )
+  parts.push(tube(arc(1.2, 8.6, 1.4, 4.2), 0.8 * k))
+  parts.push(tube(arc(-6.3, 8, 2.8, 2.6), 0.55 * k))
+  parts.push(tube(arc(-7.4, 7.9, 2.8, 2.5), 0.5 * k))
   // шейные позвонки — от основания шеи до основания черепа
   const a = V(D.neckBase.x - 1.5 * k, D.neckBase.y, 0)
   const b = V(D.headBase.x - 2 * k, D.headBase.y - 1 * k, 0)
@@ -467,21 +484,13 @@ function orbits(k) {
 }
 
 // ---------------------------------------------------------------------------
-// Мышца: веретено вдоль +Y от 0 до 1 с сухожилиями на концах.
-// g0..g1 — какую часть всей мышцы занимает этот кусок пути.
-function spindle(g0, g1, tf0, tf1, tendonR) {
-  const pts = [new THREE.Vector2(0, 0)]
-  const n = 16
-  for (let i = 0; i <= n; i++) {
-    const t = i / n
-    const g = g0 + (g1 - g0) * t
-    const u = (g - tf0) / (1 - tf0 - tf1)
-    const belly = u > 0 && u < 1 ? Math.sin(Math.PI * u) ** 0.7 : 0
-    pts.push(new THREE.Vector2(tendonR + (1 - tendonR) * belly, t))
-  }
-  pts.push(new THREE.Vector2(0, 1))
-  return new THREE.LatheGeometry(pts, 14)
-}
+// Мышцы — гладкие трубки вдоль сплайна через точки пути. Сечение —
+// эллипс: широкий вдоль поверхности тела и тонкий по нормали к ней, с
+// плоской внутренней стороной, которой мышца лежит на кости. Вершины
+// пересчитываются в каждом кадре, все мышцы — одна геометрия.
+const RINGS = 28
+const SIDES = 14
+const INNER = 0.55 // толщина внутренней стороны относительно наружной
 
 const _c = new THREE.Color()
 const _lo = new THREE.Color(COLORS.rest)
@@ -492,20 +501,95 @@ export function loadColor(load, out = _c) {
   return out.copy(_lo).lerp(_hi, a)
 }
 
-// Базис куска мышцы: y — вдоль, x — нормаль сплющенности (наружу от оси
-// торса), чтобы широкие мышцы лежали на теле, а не торчали ребром.
+// Радиус по длине мышцы g ∈ [0, 1]: сухожилия на концах, брюшко между
+// ними. Широкие плоские мышцы переходят в апоневроз, а не в шнур.
+function profile(m, g) {
+  const cap = Math.min(1, g / 0.025, (1 - g) / 0.025) ** 0.5
+  if (m.tendon) return { rad: cap, belly: 0 }
+  const [t0, t1] = m.tf ?? [0.1, 0.1]
+  const flat = (m.flat ?? 1) < 0.5
+  const tr = flat ? 0.5 : 0.24
+  const u = (g - t0) / (1 - t0 - t1)
+  const belly =
+    u > 0 && u < 1 ? Math.sin(Math.PI * u) ** (flat ? 0.35 : 0.6) : 0
+  return { rad: (tr + (1 - tr) * belly) * cap, belly }
+}
+
+// Текстура пучков волокон: полосы вдоль мышцы (по u) с бороздами между
+// пучками. Серая — умножается на цвет нагрузки; она же служит рельефом.
+function fiberTexture() {
+  if (typeof document === 'undefined') return null
+  const w = 256
+  const h = 64
+  const cv = document.createElement('canvas')
+  cv.width = w
+  cv.height = h
+  const ctx = cv.getContext('2d')
+  const img = ctx.createImageData(w, h)
+  let seed = 7
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  const col = []
+  let v = 0.9
+  let next = 0
+  for (let x = 0; x < w; x++) {
+    v = 0.8 * v + 0.2 * (0.78 + rnd() * 0.22)
+    if (x >= next) next = x + 5 + Math.floor(rnd() * 7) // граница пучка
+    const groove = x === next - 1 ? 0.7 : x === next - 2 ? 0.88 : 1
+    col.push(v * groove)
+  }
+  for (let y = 0; y < h; y++) {
+    const ripple = 0.97 + 0.03 * Math.sin((y / h) * Math.PI * 6)
+    for (let x = 0; x < w; x++) {
+      const b = Math.round(255 * Math.min(1, col[x] * ripple + 0.1))
+      const i = (y * w + x) * 4
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = b
+      img.data[i + 3] = 255
+    }
+  }
+  ctx.putImageData(img, 0, 0)
+  const tex = new THREE.CanvasTexture(cv)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.anisotropy = 4
+  return tex
+}
+
+// Отрезки осей костей (правая сторона) — от них считается «наружу»
+function boneAxes(Fr, D) {
+  const P = (o) => V(o.x, o.y, o.z)
+  const along = (F, l) => P(F.o).addScaledVector(P(F.up), -l)
+  const T0 = P(Fr.T.o)
+  return [
+    [T0, T0.clone().addScaledVector(P(Fr.T.up), D.torso * 1.15)],
+    [P(Fr.TH.o), along(Fr.TH, D.thigh)],
+    [P(Fr.SH.o), along(Fr.SH, D.shin)],
+    [P(Fr.FT.o), P(Fr.FT.o).addScaledVector(P(Fr.FT.f), D.foot * 0.6)],
+    [P(Fr.U.o), along(Fr.U, D.upperArm)],
+    [P(Fr.F.o), along(Fr.F, D.forearm)],
+  ]
+}
+
 const _x = new THREE.Vector3()
 const _y = new THREE.Vector3()
 const _z = new THREE.Vector3()
 const _m = new THREE.Matrix4()
-function pieceQuaternion(a, b, outward, q) {
-  _y.subVectors(b, a).normalize()
-  _x.copy(outward).addScaledVector(_y, -outward.dot(_y))
-  if (_x.lengthSq() < 1e-6) _x.set(1, 0, 0).addScaledVector(_y, -_y.x)
-  _x.normalize()
-  _z.crossVectors(_x, _y)
-  _m.makeBasis(_x, _y, _z)
-  return q.setFromRotationMatrix(_m)
+const _d = new THREE.Vector3()
+const _q = new THREE.Vector3()
+// Направление «наружу» в точке c: от ближайших осей костей, с плавным
+// весом, чтобы сечение не перекручивалось при смене ближайшей кости
+function outwardAt(c, axes, out) {
+  out.set(0, 0, 0)
+  for (const [a, b] of axes) {
+    _d.subVectors(b, a)
+    const t = Math.min(
+      1,
+      Math.max(0, _q.subVectors(c, a).dot(_d) / _d.lengthSq()),
+    )
+    _q.copy(a).addScaledVector(_d, t)
+    _d.subVectors(c, _q)
+    const r = _d.length() || 1e-3
+    out.addScaledVector(_d, 1 / (r * (r * r * r * r + 1e-3)))
+  }
+  return out.normalize()
 }
 
 // ---------------------------------------------------------------------------
@@ -524,7 +608,7 @@ export function buildAnatomy(body, lift, rigs, utils) {
 
   const boneMat = new THREE.MeshStandardMaterial({
     color: COLORS.bone,
-    roughness: 0.55,
+    roughness: 0.68,
   })
   const socketMat = new THREE.MeshStandardMaterial({
     color: COLORS.socket,
@@ -635,125 +719,191 @@ export function buildAnatomy(body, lift, rigs, utils) {
 
   // --- мышцы
   const perFrame = frames.map((Fr) => musclePaths(Fr, D))
+  const axesPerFrame = frames.map((Fr) => boneAxes(Fr, D))
   const loads = utils.map((u) => {
     const out = {}
     for (const m of perFrame[0]) out[m.m.group] ??= groupLoad(m.m.group, u)
     return out
   })
-  const pieces = []
-  const tendonMat = new THREE.MeshStandardMaterial({
-    color: COLORS.tendon,
-    roughness: 0.4,
-  })
+  // Правые мышцы: левые получаются зеркалом (z → −z) при записи вершин
+  const items = []
   perFrame[0].forEach((entry, mi) => {
-    const { m, side } = entry
-    const restLens = perFrame.map((p) => pathLength(p[mi].points))
-    const rest = [...restLens].sort((a, b) => a - b)[restLens.length >> 1]
-    const mat = m.tendon
-      ? tendonMat
-      : new THREE.MeshStandardMaterial({ roughness: 0.5, color: COLORS.rest })
-    if (!m.tendon) loadColor(loads[0][m.group] ?? null, mat.color)
-    // доли кусков по длине в покое
-    const pts0 = entry.points
-    const segLens = pts0.slice(1).map((p, i) => {
-      const a = pts0[i]
-      return Math.hypot(p.x - a.x, p.y - a.y, p.z - a.z)
-    })
-    const total = segLens.reduce((a, b) => a + b, 0)
-    let acc = 0
-    segLens.forEach((l, pi) => {
-      const g0 = acc / total
-      acc += l
-      const g1 = acc / total
-      const geo = m.tendon
-        ? new THREE.CylinderGeometry(1, 1, 1, 8, 1).translate(0, 0.5, 0)
-        : spindle(g0, g1, m.tf?.[0] ?? 0.1, m.tf?.[1] ?? 0.1, 0.2)
-      const mesh = new THREE.Mesh(geo, mat)
-      mesh.name = `mus_${m.id}_${side}_${pi}`
-      mesh.castShadow = true
-      group.add(mesh)
-      pieces.push({
-        mesh,
-        mi,
-        pi,
-        m,
-        rest,
-        colorTrack: pi === 0 && !m.tendon,
-      })
+    if (entry.side !== 'R') return
+    const { m } = entry
+    const lens = perFrame.map((p) => pathLength(p[mi].points))
+      .sort((a, b) => a - b)
+    const rest = lens[lens.length >> 1]
+    const rings = []
+    for (let i = 0; i <= RINGS; i++) rings.push(profile(m, i / RINGS))
+    items.push({
+      m,
+      mi,
+      rest,
+      rings,
+      curve: new THREE.CatmullRomCurve3(
+        entry.points.map((p) => V(p.x, p.y, p.z)),
+        false,
+        'centripetal',
+      ),
     })
   })
 
-  const muscleTracks = (duration) => {
-    const out = []
-    const a = new THREE.Vector3()
-    const b = new THREE.Vector3()
-    const outward = new THREE.Vector3()
-    const upv = new THREE.Vector3()
-    const qq = new THREE.Quaternion()
-    for (const pc of pieces) {
-      const pos = []
-      const rot = []
-      const scl = []
-      const col = []
-      perFrame.forEach((paths, fi) => {
-        const { points } = paths[pc.mi]
-        const P = points[pc.pi]
-        const Q = points[pc.pi + 1]
-        a.set(P.x, P.y, P.z)
-        b.set(Q.x, Q.y, Q.z)
-        // наружу от оси торса, на уровне середины куска
-        const T = frames[fi].T
-        const mid = a.clone().add(b).multiplyScalar(0.5)
-        upv.set(T.up.x, T.up.y, T.up.z)
-        const along = mid.clone().sub(T.o).dot(upv)
-        outward
-          .copy(mid)
-          .sub(V(T.o.x, T.o.y, T.o.z).addScaledVector(upv, along))
-        pieceQuaternion(a, b, outward, qq)
-        pos.push(a.x, a.y, a.z)
-        rot.push(qq.x, qq.y, qq.z, qq.w)
-        // объём мышцы сохраняется: короче — толще
-        const vol = pc.m.tendon
-          ? 1
-          : Math.min(
-              1.3,
-              Math.max(0.8, Math.sqrt(pc.rest / pathLength(points))),
-            )
-        const r = pc.m.r * k * vol
-        scl.push(r * (pc.m.flat ?? 1), a.distanceTo(b), r)
-        if (pc.colorTrack) {
-          loadColor(loads[fi][pc.m.group] ?? null, _c)
-          col.push(_c.r, _c.g, _c.b)
+  const ringV = SIDES + 1
+  const perMuscle = (RINGS + 1) * ringV
+  const nV = items.length * 2 * perMuscle
+  const position = new Float32Array(nV * 3)
+  const normal = new Float32Array(nV * 3)
+  const color = new Float32Array(nV * 3)
+  const uv = new Float32Array(nV * 2)
+  const index = []
+  items.forEach((it, n) => {
+    for (const mirror of [false, true]) {
+      const base = (n * 2 + (mirror ? 1 : 0)) * perMuscle
+      for (let i = 0; i <= RINGS; i++) {
+        for (let j = 0; j <= SIDES; j++) {
+          const v = base + i * ringV + j
+          uv[v * 2] = (j / SIDES) * 1.5
+          uv[v * 2 + 1] = ((i / RINGS) * it.rest) / 12
+          if (i === RINGS || j === SIDES) continue
+          const a = v
+          const b = v + ringV
+          const c = v + ringV + 1
+          const d = v + 1
+          // зеркальная копия выворачивает обход треугольников
+          if (mirror) index.push(a, b, c, a, c, d)
+          else index.push(a, c, b, a, d, c)
         }
-      })
-      const nm = pc.mesh.name
-      out.push(
-        new THREE.VectorKeyframeTrack(`${nm}.position`, t(duration), pos),
-      )
-      out.push(
-        new THREE.QuaternionKeyframeTrack(`${nm}.quaternion`, t(duration), rot),
-      )
-      out.push(new THREE.VectorKeyframeTrack(`${nm}.scale`, t(duration), scl))
-      if (pc.colorTrack && pc.m.group && hasLoad(loads, pc.m.group)) {
-        out.push(
-          new THREE.ColorKeyframeTrack(
-            `${nm}.material.color`,
-            t(duration),
-            col,
-          ),
-        )
       }
     }
-    return out
+  })
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.BufferAttribute(position, 3))
+  geo.setAttribute('normal', new THREE.BufferAttribute(normal, 3))
+  geo.setAttribute('color', new THREE.BufferAttribute(color, 3))
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+  geo.setIndex(index)
+  const fibers = fiberTexture()
+  const muscleMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.42,
+    metalness: 0,
+    map: fibers,
+    bumpMap: fibers,
+    bumpScale: 1.2,
+  })
+  const muscles = new THREE.Mesh(geo, muscleMat)
+  muscles.name = 'muscles'
+  muscles.castShadow = true
+  muscles.frustumCulled = false // вершины двигаются, сфера границ устаревает
+  group.add(muscles)
+
+  const tendonC = new THREE.Color(COLORS.tendon)
+  const mc = new THREE.Color()
+  const vc = new THREE.Color()
+  const P = new THREE.Vector3()
+  const tan = new THREE.Vector3()
+  const N = new THREE.Vector3()
+  const B = new THREE.Vector3()
+  const nrm = new THREE.Vector3()
+  const axes = axesPerFrame[0].map(([a, b]) => [a.clone(), b.clone()])
+  let last = null
+
+  // phase ∈ [0, 1] — та же доля проигрыша, что у треков костей
+  const update = (phase) => {
+    if (phase === last) return
+    last = phase
+    const u = Math.min(1, Math.max(0, phase)) * (n - 1)
+    const i0 = Math.min(n - 2, Math.floor(u))
+    const f = n > 1 ? u - i0 : 0
+    const i1 = Math.min(n - 1, i0 + 1)
+    axes.forEach(([a, b], ai) => {
+      a.lerpVectors(axesPerFrame[i0][ai][0], axesPerFrame[i1][ai][0], f)
+      b.lerpVectors(axesPerFrame[i0][ai][1], axesPerFrame[i1][ai][1], f)
+    })
+    items.forEach((it, idx) => {
+      const p0 = perFrame[i0][it.mi].points
+      const p1 = perFrame[i1][it.mi].points
+      it.curve.points.forEach((p, j) =>
+        p.set(
+          p0[j].x + (p1[j].x - p0[j].x) * f,
+          p0[j].y + (p1[j].y - p0[j].y) * f,
+          p0[j].z + (p1[j].z - p0[j].z) * f,
+        ),
+      )
+      it.curve.updateArcLengths()
+      const len = it.curve.getLength()
+      const { m } = it
+      // объём сохраняется: короче — толще
+      const vol = m.tendon
+        ? 1
+        : Math.min(1.3, Math.max(0.8, Math.sqrt(it.rest / len)))
+      const R = m.r * k * vol
+      const flat = m.flat ?? 1
+      const l0 = loads[i0][m.group] ?? null
+      const l1 = loads[i1][m.group] ?? null
+      loadColor(l0 === null || l1 === null ? l0 : l0 + (l1 - l0) * f, mc)
+      for (let i = 0; i <= RINGS; i++) {
+        const g = i / RINGS
+        const { rad, belly } = it.rings[i]
+        it.curve.getPointAt(g, P)
+        it.curve.getTangentAt(g, tan)
+        outwardAt(P, axes, N)
+        N.addScaledVector(tan, -N.dot(tan))
+        if (N.lengthSq() < 1e-8) N.set(1, 0, 0).addScaledVector(tan, -tan.x)
+        N.normalize()
+        B.crossVectors(tan, N)
+        // плоские мышцы шире, чтобы соседние пучки смыкались в пласт
+        const rb = R * rad * (flat < 0.5 ? 1.3 : 1)
+        const ro = R * rad * flat
+        if (m.tendon) vc.copy(tendonC)
+        else {
+          // сухожильные перемычки (у прямой мышцы живота)
+          const band = (m.bands ?? []).some((b) => Math.abs(g - b) < 0.02)
+          vc.copy(mc).lerp(tendonC, band ? 0.8 : (1 - belly) ** 2 * 0.85)
+        }
+        for (let j = 0; j <= SIDES; j++) {
+          const th = (j / SIDES) * Math.PI * 2
+          const cs = Math.cos(th)
+          const sn = Math.sin(th)
+          const rn = cs > 0 ? ro : ro * INNER
+          const x = P.x + N.x * rn * cs + B.x * rb * sn
+          const y = P.y + N.y * rn * cs + B.y * rb * sn
+          const z = P.z + N.z * rn * cs + B.z * rb * sn
+          nrm
+            .copy(N)
+            .multiplyScalar(cs / (rn || 1e-3))
+            .addScaledVector(B, sn / (rb || 1e-3))
+            .normalize()
+          const vR = (idx * 2 * perMuscle + i * ringV + j) * 3
+          const vL = vR + perMuscle * 3
+          position[vR] = x
+          position[vR + 1] = y
+          position[vR + 2] = z
+          position[vL] = x
+          position[vL + 1] = y
+          position[vL + 2] = -z
+          normal[vR] = nrm.x
+          normal[vR + 1] = nrm.y
+          normal[vR + 2] = nrm.z
+          normal[vL] = nrm.x
+          normal[vL + 1] = nrm.y
+          normal[vL + 2] = -nrm.z
+          color[vR] = color[vL] = vc.r
+          color[vR + 1] = color[vL + 1] = vc.g
+          color[vR + 2] = color[vL + 2] = vc.b
+        }
+      }
+    })
+    geo.attributes.position.needsUpdate = true
+    geo.attributes.normal.needsUpdate = true
+    geo.attributes.color.needsUpdate = true
   }
+  update(0)
 
   return {
     group,
     loads,
-    tracks: (duration) => [...boneTracks(duration), ...muscleTracks(duration)],
+    update,
+    tracks: (duration) => boneTracks(duration),
   }
-}
-
-function hasLoad(loads, group) {
-  return loads.some((l) => l[group] !== null && l[group] !== undefined)
 }
